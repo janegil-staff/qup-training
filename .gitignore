@@ -9,7 +9,8 @@ apps/mobile/node_modules
 dist/
 web-build/
 expo-env.d.ts
-
+apps/server/.env
+apps/mobile/.env
 .env
 apps/server/.env
 apps/server.env
@@ -43,3 +44,4 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+apps/server/.env
