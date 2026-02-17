@@ -54,6 +54,24 @@ export const createTemplate = async (req, res) => {
   }
 };
 
+export const deleteTemplate = async (req, res) => {
+  try {
+    const template = await WorkoutTemplate.findById(req.params.id);
+    if (!template) return res.status(404).json({ error: 'Template not found' });
+
+    // Allow delete if: you created it, OR it has no owner (seeded data)
+    if (template.createdBy && template.createdBy.toString() !== req.userId) {
+      return res.status(403).json({ error: 'Not your template' });
+    }
+
+    await WorkoutTemplate.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: 'Template deleted' });
+  } catch (error) {
+    console.error('DeleteTemplate error:', error.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 // ─── Workout Logs ────────────────────────────────────────────────────
 export const getLogs = async (req, res) => {
   try {
