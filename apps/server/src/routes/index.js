@@ -31,6 +31,8 @@ router.post("/auth/login", authCtrl.login);
 router.post("/auth/refresh", authCtrl.refresh);
 router.get("/auth/me", auth, authCtrl.getMe);
 router.post("/auth/logout", auth, authCtrl.logout);
+router.post("/auth/forgot-password", authCtrl.forgotPassword);
+router.post("/auth/reset-password", authCtrl.resetPassword);
 
 // ─── User / Profile ──────────────────────────────────────────────────
 router.put("/users/profile", auth, userCtrl.updateProfile);
@@ -91,6 +93,11 @@ router.get("/notifications", auth, notificationCtrl.getAll);
 router.patch("/notifications/read-all", auth, notificationCtrl.readAll);
 router.patch("/notifications/:id/read", auth, notificationCtrl.readOne);
 router.delete("/notifications/:id", auth, notificationCtrl.remove);
+router.post(
+  "/notifications/push-token",
+  auth,
+  notificationCtrl.registerPushToken,
+);
 
 // ─── Upload ──────────────────────────────────────────────────────────
 router.post(

@@ -1,4 +1,19 @@
 import Notification from '../models/Notification.js';
+import User from '../models/User.js';
+
+// ─── Register Push Token ─────────────────────────────────────────────
+export const registerPushToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'Token is required' });
+
+    await User.findByIdAndUpdate(req.userId, { expoPushToken: token });
+    res.status(200).json({ message: 'Push token registered' });
+  } catch (error) {
+    console.error('RegisterPushToken error:', error.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
 
 // ─── Get All ─────────────────────────────────────────────────────────
 export const getAll = async (req, res) => {

@@ -21,11 +21,15 @@ const userSchema = new mongoose.Schema({
   followers:    [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   following:    [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   refreshToken: String,
+  resetCode: String,
+  resetCodeExpiry: Date,
+  expoPushToken: String,
 }, { timestamps: true });
 
-userSchema.pre('save', async function () {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return;
   this.password = await bcrypt.hash(this.password, 12);
+
 });
 
 userSchema.methods.comparePassword = function (candidatePassword) {

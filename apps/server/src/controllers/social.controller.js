@@ -1,6 +1,7 @@
 import SocialPost from '../models/SocialPost.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
+import { notifyLike, notifyComment, notifyFollow } from '../services/push.service.js';
 
 // ─── Feed ────────────────────────────────────────────────────────────
 export const getFeed = async (req, res) => {
@@ -70,6 +71,8 @@ export const likePost = async (req, res) => {
           title: `${liker.firstName} liked your post`,
           data: { postId: post._id },
         });
+        // Push notification
+        notifyLike(post.userId, liker.firstName);
       }
     }
     await post.save();
@@ -102,6 +105,8 @@ export const commentPost = async (req, res) => {
         body: text.trim().slice(0, 100),
         data: { postId: post._id },
       });
+      // Push notification
+      notifyComment(post.userId, commenter.firstName, text.trim());
     }
 
     const updated = await SocialPost.findById(post._id)
