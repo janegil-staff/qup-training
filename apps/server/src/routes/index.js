@@ -38,6 +38,7 @@ router.post("/auth/reset-password", authCtrl.resetPassword);
 router.put("/users/profile", auth, userCtrl.updateProfile);
 router.put("/users/password", auth, userCtrl.changePassword);
 router.get("/users/search", auth, userCtrl.searchUsers);
+router.delete("/users/account", auth, userCtrl.deleteAccount);
 router.get("/users/:id/profile", auth, socialCtrl.getUserProfile);
 router.post("/users/:id/follow", auth, socialCtrl.followUser);
 
@@ -87,6 +88,7 @@ router.post("/challenges", auth, challengeCtrl.create);
 router.post("/challenges/:id/join", auth, challengeCtrl.join);
 router.patch("/challenges/:id/progress", auth, challengeCtrl.updateProgress);
 router.get("/challenges/:id/leaderboard", auth, challengeCtrl.getLeaderboard);
+router.delete("/challenges/:id", auth, challengeCtrl.remove);
 
 // ─── Notifications ───────────────────────────────────────────────────
 router.get("/notifications", auth, notificationCtrl.getAll);

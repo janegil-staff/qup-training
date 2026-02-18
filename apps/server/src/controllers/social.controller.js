@@ -1,31 +1,43 @@
-import SocialPost from '../models/SocialPost.js';
-import User from '../models/User.js';
-import Notification from '../models/Notification.js';
-import { notifyLike, notifyComment, notifyFollow } from '../services/push.service.js';
+import SocialPost from "../models/SocialPost.js";
+import User from "../models/User.js";
+import Notification from "../models/Notification.js";
+import {
+  notifyLike,
+  notifyComment,
+  notifyFollow,
+} from "../services/push.service.js";
 
 // ─── Feed ────────────────────────────────────────────────────────────
 export const getFeed = async (req, res) => {
   try {
     const { limit = 20, page = 1 } = req.query;
-    const user = await User.findById(req.userId);
-    const followingIds = [...(user?.following || []), req.userId];
-
     const skip = (parseInt(page) - 1) * parseInt(limit);
+
     const [posts, total] = await Promise.all([
-      SocialPost.find({ $or: [{ userId: { $in: followingIds } }, { isPublic: true }] })
-        .populate('userId', 'firstName lastName avatar')
-        .populate('comments.userId', 'firstName lastName')
-        .populate('workoutLogId', 'name durationMinutes caloriesBurned exercises')
+      SocialPost.find({})
+        .populate("userId", "firstName lastName avatar")
+        .populate("comments.userId", "firstName lastName")
+        .populate(
+          "workoutLogId",
+          "name durationMinutes caloriesBurned exercises",
+        )
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit)),
-      SocialPost.countDocuments({ $or: [{ userId: { $in: followingIds } }, { isPublic: true }] }),
+      SocialPost.countDocuments({}),
     ]);
 
-    res.status(200).json({ posts, total, page: parseInt(page), totalPages: Math.ceil(total / parseInt(limit)) });
+    res
+      .status(200)
+      .json({
+        posts,
+        total,
+        page: parseInt(page),
+        totalPages: Math.ceil(total / parseInt(limit)),
+      });
   } catch (error) {
-    console.error('GetFeed error:', error.message);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("GetFeed error:", error.message);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -34,21 +46,35 @@ export const createPost = async (req, res) => {
   try {
     const { type, content, image, workoutLogId, challengeId } = req.body;
     if (!content && !image && !workoutLogId) {
-      return res.status(400).json({ error: 'Post must have content, image, or linked workout' });
+      return res
+        .status(400)
+        .json({ error: "Post must have content, image, or linked workout" });
     }
 
     const post = await SocialPost.create({
-      userId: req.userId, type: type || 'TEXT', content, image, workoutLogId, challengeId,
+      userId: req.userId,
+      type: type || "TEXT",
+      content,
+      image,
+      workoutLogId,
+      challengeId,
     });
 
     const populated = await SocialPost.findById(post._id)
-      .populate('userId', 'firstName lastName avatar')
-      .populate('workoutLogId', 'name durationMinutes caloriesBurned exercises');
+      .populate("userId", "firstName lastName avatar")
+      .populate(
+        "workoutLogId",
+        "name durationMinutes caloriesBurned exercises",
+      );
+
+    // 🔴 Real-time: broadcast new post to everyone
+    const io = req.app.get("io");
+    if (io) io.except(`user:${req.userId}`).emit('post:new', populated);
 
     res.status(201).json(populated);
   } catch (error) {
-    console.error('CreatePost error:', error.message);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("CreatePost error:", error.message);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -56,31 +82,51 @@ export const createPost = async (req, res) => {
 export const likePost = async (req, res) => {
   try {
     const post = await SocialPost.findById(req.params.id);
-    if (!post) return res.status(404).json({ error: 'Post not found' });
+    if (!post) return res.status(404).json({ error: "Post not found" });
 
     const idx = post.likes.indexOf(req.userId);
-    if (idx > -1) {
-      post.likes.splice(idx, 1);
-    } else {
+    const liked = idx === -1;
+
+    if (liked) {
       post.likes.push(req.userId);
-      // Notify post owner
       if (post.userId.toString() !== req.userId) {
-        const liker = await User.findById(req.userId, 'firstName');
+        const liker = await User.findById(req.userId, "firstName");
         await Notification.create({
-          userId: post.userId, type: 'LIKE',
+          userId: post.userId,
+          type: "LIKE",
           title: `${liker.firstName} liked your post`,
           data: { postId: post._id },
         });
-        // Push notification
         notifyLike(post.userId, liker.firstName);
+
+        // 🔴 Real-time: notify post owner
+        const io = req.app.get("io");
+        if (io) {
+          io.to(`user:${post.userId}`).emit("notification:new", {
+            type: "LIKE",
+            title: `${liker.firstName} liked your post`,
+          });
+        }
       }
+    } else {
+      post.likes.splice(idx, 1);
     }
     await post.save();
 
-    res.status(200).json({ likes: post.likes.length, liked: idx === -1 });
+    // 🔴 Real-time: broadcast like update to everyone
+    const io = req.app.get("io");
+    if (io)
+      io.emit("post:liked", {
+        postId: post._id,
+        likes: post.likes.length,
+        userId: req.userId,
+        liked,
+      });
+
+    res.status(200).json({ likes: post.likes.length, liked });
   } catch (error) {
-    console.error('LikePost error:', error.message);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("LikePost error:", error.message);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -88,45 +134,73 @@ export const likePost = async (req, res) => {
 export const commentPost = async (req, res) => {
   try {
     const { text } = req.body;
-    if (!text?.trim()) return res.status(400).json({ error: 'Comment text required' });
+    if (!text?.trim())
+      return res.status(400).json({ error: "Comment text required" });
 
     const post = await SocialPost.findById(req.params.id);
-    if (!post) return res.status(404).json({ error: 'Post not found' });
+    if (!post) return res.status(404).json({ error: "Post not found" });
 
     post.comments.push({ userId: req.userId, text: text.trim() });
     await post.save();
 
-    // Notify post owner
     if (post.userId.toString() !== req.userId) {
-      const commenter = await User.findById(req.userId, 'firstName');
+      const commenter = await User.findById(req.userId, "firstName");
       await Notification.create({
-        userId: post.userId, type: 'COMMENT',
+        userId: post.userId,
+        type: "COMMENT",
         title: `${commenter.firstName} commented on your post`,
         body: text.trim().slice(0, 100),
         data: { postId: post._id },
       });
-      // Push notification
       notifyComment(post.userId, commenter.firstName, text.trim());
+
+      // 🔴 Real-time: notify post owner
+      const io = req.app.get("io");
+      if (io) {
+        io.to(`user:${post.userId}`).emit("notification:new", {
+          type: "COMMENT",
+          title: `${commenter.firstName} commented on your post`,
+        });
+      }
     }
 
-    const updated = await SocialPost.findById(post._id)
-      .populate('comments.userId', 'firstName lastName');
+    const updated = await SocialPost.findById(post._id).populate(
+      "comments.userId",
+      "firstName lastName",
+    );
+
+    // 🔴 Real-time: broadcast new comment
+    const io = req.app.get("io");
+    if (io)
+      io.emit("post:commented", {
+        postId: post._id,
+        comments: updated.comments,
+      });
 
     res.status(200).json(updated.comments);
   } catch (error) {
-    console.error('CommentPost error:', error.message);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("CommentPost error:", error.message);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
 // ─── Delete Post ─────────────────────────────────────────────────────
 export const deletePost = async (req, res) => {
   try {
-    const post = await SocialPost.findOneAndDelete({ _id: req.params.id, userId: req.userId });
-    if (!post) return res.status(404).json({ error: 'Post not found or not yours' });
-    res.status(200).json({ message: 'Post deleted' });
+    const post = await SocialPost.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.userId,
+    });
+    if (!post)
+      return res.status(404).json({ error: "Post not found or not yours" });
+
+    // 🔴 Real-time: broadcast deletion
+    const io = req.app.get("io");
+    if (io) io.emit("post:deleted", { postId: req.params.id });
+
+    res.status(200).json({ message: "Post deleted" });
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -134,13 +208,14 @@ export const deletePost = async (req, res) => {
 export const followUser = async (req, res) => {
   try {
     const targetId = req.params.id;
-    if (targetId === req.userId) return res.status(400).json({ error: 'Cannot follow yourself' });
+    if (targetId === req.userId)
+      return res.status(400).json({ error: "Cannot follow yourself" });
 
     const [user, target] = await Promise.all([
       User.findById(req.userId),
       User.findById(targetId),
     ]);
-    if (!target) return res.status(404).json({ error: 'User not found' });
+    if (!target) return res.status(404).json({ error: "User not found" });
 
     const isFollowing = user.following.includes(targetId);
     if (isFollowing) {
@@ -150,30 +225,46 @@ export const followUser = async (req, res) => {
       user.following.push(targetId);
       target.followers.push(req.userId);
       await Notification.create({
-        userId: targetId, type: 'FOLLOW',
+        userId: targetId,
+        type: "FOLLOW",
         title: `${user.firstName} started following you`,
         data: { userId: req.userId },
       });
+      notifyFollow(targetId, user.firstName);
+
+      // 🔴 Real-time: notify followed user
+      const io = req.app.get("io");
+      if (io) {
+        io.to(`user:${targetId}`).emit("notification:new", {
+          type: "FOLLOW",
+          title: `${user.firstName} started following you`,
+        });
+      }
     }
 
     await Promise.all([user.save(), target.save()]);
-
-    res.status(200).json({ following: !isFollowing, followerCount: target.followers.length });
+    res
+      .status(200)
+      .json({
+        following: !isFollowing,
+        followerCount: target.followers.length,
+      });
   } catch (error) {
-    console.error('FollowUser error:', error.message);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("FollowUser error:", error.message);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
 // ─── User Profile ────────────────────────────────────────────────────
 export const getUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id)
-      .select('-password -refreshToken -stripeCustomerId');
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const user = await User.findById(req.params.id).select(
+      "-password -refreshToken -stripeCustomerId",
+    );
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     const posts = await SocialPost.find({ userId: req.params.id })
-      .populate('userId', 'firstName lastName avatar')
+      .populate("userId", "firstName lastName avatar")
       .sort({ createdAt: -1 })
       .limit(20);
 
@@ -187,6 +278,6 @@ export const getUserProfile = async (req, res) => {
       followingCount: user.following.length,
     });
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: "Internal server error" });
   }
 };

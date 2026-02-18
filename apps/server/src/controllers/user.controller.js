@@ -74,3 +74,39 @@ export const searchUsers = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+// ─── Delete Account ─────────────────────────────────────────────────
+export const deleteAccount = async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'Password is required to delete account' });
+
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const valid = await user.comparePassword(password);
+    if (!valid) return res.status(401).json({ error: 'Incorrect password' });
+
+    // Delete all user data
+    const mongoose = (await import('mongoose')).default;
+    await Promise.all([
+      mongoose.model('SocialPost').deleteMany({ userId: req.userId }),
+      mongoose.model('WorkoutLog').deleteMany({ userId: req.userId }),
+      mongoose.model('NutritionLog').deleteMany({ userId: req.userId }),
+      mongoose.model('BodyStats').deleteMany({ userId: req.userId }),
+      mongoose.model('Notification').deleteMany({ userId: req.userId }),
+      // Remove from other users' followers/following
+      User.updateMany({ followers: req.userId }, { $pull: { followers: req.userId } }),
+      User.updateMany({ following: req.userId }, { $pull: { following: req.userId } }),
+    ]);
+
+    // Delete the user
+    await User.findByIdAndDelete(req.userId);
+
+    console.log(`🗑️ Account deleted: ${user.email}`);
+    res.status(200).json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('DeleteAccount error:', error.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
