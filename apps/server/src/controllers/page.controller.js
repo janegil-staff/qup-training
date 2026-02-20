@@ -120,4 +120,9 @@ export const deleteAccount = (req, res) => {
   <h2>In the App</h2>
   <p>Go to Settings > Delete Account and confirm. All your data will be permanently removed.</p>
   <h2>Via Email</h2>
-  <p>Send a request to <a href="mailto:qup.dating@gmail.com">qup.dating@gmail.com</a> with the subject "Account Deletion Request" and we'll process it within 48
+  <p>Send a request to <a href="mailto:qup.dating@gmail.com">qup.dating@gmail.com</a> with the subject "Account Deletion Request" and we'll process it within 48 hours.</p>
+  <h2>What Gets Deleted</h2>
+  <p>Your profile, workout logs, nutrition data, body stats, posts, and all associated data will be permanently deleted. This action cannot be undone.</p>
+</body>
+</html>`);
+};
