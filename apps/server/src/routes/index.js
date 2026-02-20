@@ -12,6 +12,7 @@ import * as notificationCtrl from "../controllers/notification.controller.js";
 import * as userCtrl from "../controllers/user.controller.js";
 import * as uploadCtrl from "../controllers/upload.controller.js";
 import * as aiCtrl from "../controllers/ai.controller.js";
+import * as pagesCtrl from "../controllers/pages.controller.js";
 
 const router = Router();
 
@@ -24,6 +25,11 @@ const upload = multer({
     else cb(new Error("Only image files are allowed"), false);
   },
 });
+
+// ─── Pages (public) ──────────────────────────────────────────────────
+router.get("/privacy", pagesCtrl.privacyPolicy);
+router.get("/support", pagesCtrl.support);
+router.get("/delete-account", pagesCtrl.deleteAccount);
 
 // ─── Auth ────────────────────────────────────────────────────────────
 router.post("/auth/register", authCtrl.register);

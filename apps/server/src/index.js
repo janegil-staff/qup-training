@@ -85,6 +85,78 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// ─── Privacy Policy ──────────────────────────────────────────────────
+app.get('/privacy', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - QUP Training</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 700px; margin: 0 auto; padding: 24px; color: #222; line-height: 1.7; }
+    h1 { font-size: 24px; margin-bottom: 4px; }
+    h2 { font-size: 18px; margin-top: 32px; }
+    p, li { font-size: 15px; }
+    ul { padding-left: 20px; }
+    .updated { color: #666; font-size: 14px; margin-bottom: 32px; }
+  </style>
+</head>
+<body>
+  <h1>Privacy Policy for QUP Training</h1>
+  <p class="updated">Last updated: January 2026</p>
+  <h2>1. Introduction</h2>
+  <p>QUP ("we", "our", "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile application ("the App").</p>
+  <h2>2. Information We Collect</h2>
+  <p>We may collect:</p>
+  <ul>
+    <li>Profile information you choose to provide</li>
+    <li>Messages or content you send in the app</li>
+    <li>Device information (model, OS version, identifiers)</li>
+    <li>Usage data (interactions, crash logs)</li>
+    <li>Approximate location if required for app functionality</li>
+  </ul>
+  <p>We do not collect sensitive personal data unless you explicitly provide it.</p>
+  <h2>3. How We Use Your Information</h2>
+  <p>We use your information to:</p>
+  <ul>
+    <li>Operate and improve the app</li>
+    <li>Enhance performance and stability</li>
+    <li>Communicate with you about updates or support</li>
+    <li>Prevent misuse and ensure safety</li>
+  </ul>
+  <p>We do not sell your data.</p>
+  <h2>4. Sharing of Information</h2>
+  <p>We may share information only with:</p>
+  <ul>
+    <li>Service providers (analytics, crash reporting)</li>
+    <li>Legal authorities if required by law</li>
+    <li>To protect the rights and safety of users</li>
+  </ul>
+  <p>We do not share data for advertising.</p>
+  <h2>5. Data Security</h2>
+  <p>We use reasonable technical and organizational measures to protect your data. No method is 100% secure.</p>
+  <h2>6. Children's Privacy</h2>
+  <p>QUP Training is not intended for children under 18. We do not knowingly collect data from children under 18.</p>
+  <h2>7. Your Rights</h2>
+  <p>You may request:</p>
+  <ul>
+    <li>Access to your data</li>
+    <li>Correction or deletion</li>
+    <li>Withdrawal of consent</li>
+  </ul>
+  <p>Contact us using the email below.</p>
+  <h2>8. Third-Party Services</h2>
+  <p>The app may use third-party tools such as analytics or crash reporting. These services follow their own privacy policies.</p>
+  <h2>9. Changes to This Policy</h2>
+  <p>We may update this Privacy Policy. The latest version will always be available at this URL.</p>
+  <h2>10. Contact Us</h2>
+  <p>Email: qup.dating@gmail.com<br>Company: QUP DA<br>Country: Norway</p>
+</body>
+</html>`);
+});
+
+
 // ─── Routes ──────────────────────────────────────────────────────────
 app.use('/api', routes);
 
